@@ -25,9 +25,9 @@ out VertexOut vData;
 	mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));
 
 	vData.normal = normalMatrix * aNormal;
-	vData.position = mvp * vec4(aPos.x, aPos.y, aPos.z, 1.0);
+	vData.position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
 	vData.uv = aUV;
-	gl_Position = vData.position;
+	gl_Position = mvp * vData.position;
 }
 
 #pragma fragment

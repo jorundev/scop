@@ -207,17 +207,6 @@ impl Drop for Mesh {
 
 fn triangulate(attributes: &[FaceAttribute], _positions: &Vec<Vec4>) -> Vec<[FaceAttribute; 3]> {
     let mut ret = vec![];
-    /*for (i, window) in attributes.windows(3).enumerate() {
-        if i % 1 == 0 { continue; }
-
-        let first = window[0];
-        let second = match window.len() {
-            2 | 3 => window[1],
-            1 =>
-        };
-
-        let triangle = [window[0]];
-    }*/
 
     for i in 1..(attributes.len() - 1) {
         ret.push([
@@ -228,40 +217,78 @@ fn triangulate(attributes: &[FaceAttribute], _positions: &Vec<Vec4>) -> Vec<[Fac
     }
 
     ret
+}
 
-    /*match attributes.len() {
-        3 => {
-            return vec![[
-                attributes[0].clone(),
-                attributes[1].clone(),
-                attributes[2].clone(),
-            ]]
-        }
-        4 => {
-            return vec![
-                [
-                    attributes[0].clone(),
-                    attributes[1].clone(),
-                    attributes[2].clone(),
-                ]
-                .clone(),
-                [
-                    attributes[2].clone(),
-                    attributes[3].clone(),
-                    attributes[0].clone(),
+fn generate_normals(obj: &mut wavefront::Obj) {
+    let mut normals = Vec::with_capacity(obj.positions.len());
+    let mut faces = Vec::with_capacity(obj.faces.len());
+
+    for face in &obj.faces {
+        let triangles = triangulate(&face.attributes, &obj.positions);
+
+        for mut triangle in triangles {
+            let triangles_positions = [
+                obj.positions[triangle[0].position_index as usize - 1].xyz(),
+                obj.positions[triangle[1].position_index as usize - 1].xyz(),
+                obj.positions[triangle[2].position_index as usize - 1].xyz(),
+            ];
+
+            let normal = (triangles_positions[1] - triangles_positions[0])
+                .cross(triangles_positions[2] - triangles_positions[0])
+                .normalize();
+
+            normals.push(normal);
+
+            triangle[0].normal_index = Some(normals.len() as u32);
+            triangle[1].normal_index = Some(normals.len() as u32);
+            triangle[2].normal_index = Some(normals.len() as u32);
+
+            faces.push(Face {
+                attributes: vec![
+                    triangle[0].clone(),
+                    triangle[1].clone(),
+                    triangle[2].clone(),
                 ],
-            ]
+            });
         }
-        _ => panic!("Invalid number of vertices"),
-    }*/
+    }
+
+    obj.normals = normals;
+    obj.faces = faces;
+}
+
+fn generate_uvs(obj: &mut wavefront::Obj) {
+    let mut uvs = Vec::with_capacity(obj.positions.len());
+
+    for face in &mut obj.faces {
+        for attribute in &mut face.attributes {
+            let position = obj.positions[attribute.position_index as usize - 1];
+            let uv = Vec3(position.1, position.2, 1.0);
+
+            uvs.push(uv);
+            attribute.texture_coordinate_index = Some(uvs.len() as u32);
+        }
+    }
+
+    obj.uvs = uvs;
 }
 
 impl From<wavefront::Obj> for MeshData {
-    fn from(obj: wavefront::Obj) -> Self {
+    fn from(mut obj: wavefront::Obj) -> Self {
         let mut positions = vec![];
         let mut uvs = vec![];
         let mut normals: Vec<f32> = vec![];
         let mut indices: Vec<u32> = vec![];
+
+        if obj.normals.len() == 0 {
+            println!("Info: Model has no normals, calculating them");
+            generate_normals(&mut obj);
+        }
+
+        if obj.uvs.len() == 0 {
+            println!("Info: Model has no UVs, calculating them");
+            generate_uvs(&mut obj);
+        }
 
         let mut processed_attributes: HashMap<FaceAttribute, usize> = HashMap::new();
 

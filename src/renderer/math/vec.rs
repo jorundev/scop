@@ -23,7 +23,7 @@ impl Vec3 {
     pub fn normalize(&self) -> Self {
         let length = self.length();
         //println!("{length}");
-        if length != 0.0 {
+        if length == 0.0 {
             return *self;
         }
 
@@ -77,6 +77,9 @@ impl Vec4 {
     pub const NEG_Z: Self = Self(0.0, 0.0, -1.0, 0.0);
     pub const NEG_W: Self = Self(0.0, 0.0, 0.0, -1.0);
 
+    pub fn xyz(&self) -> Vec3 {
+        Vec3(self.0, self.1, self.2)
+    }
     pub fn xxxx(&self) -> Self {
         Self(self.0, self.0, self.0, self.0)
     }
